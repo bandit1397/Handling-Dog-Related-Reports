@@ -74,8 +74,8 @@
     Object.keys(D.cases).forEach(function (id) {
       var c = D.cases[id];
       var title = norm(c.title + " " + c.keywords + " " + c.group);
-      var all = title + norm(catName(c.cat) + strip(c.action) + strip(c.note) + c.checks.join(" ") +
-        c.laws.map(function (l) { return l.law + l.penalty + l.note; }).join(" "));
+      var all = title + norm(catName(c.cat) + strip(c.action) + strip(c.note) + strip(c.checks.join(" ")) +
+        c.laws.map(function (l) { return l.text; }).join(" "));
       var score = 0, ok = words.every(function (w) {
         if (title.indexOf(w) >= 0) { score += 3; return true; }
         if (all.indexOf(w) >= 0) { score += 1; return true; }
@@ -110,10 +110,10 @@
     tabs("home");
     var h = '<div class="casehead">' + badge(c.verdict) + "<h1>" + esc(c.title) + "</h1></div>";
     if (c.laws.length) h += '<div class="card"><h3>적용법조 · 처벌</h3>' + c.laws.map(function (l) {
-      return '<div class="law"><span class="n">' + esc(l.law) + '</span><span class="p">' + esc(l.penalty) + "</span>" + (l.note ? '<span class="h">' + esc(l.note) + "</span>" : "") + "</div>";
+      return '<div class="law"><span class="n">' + l.law + '</span><span class="p">' + l.penalty + "</span>" + (l.note ? '<span class="h">' + l.note + "</span>" : "") + "</div>";
     }).join("") + "</div>";
     if (c.checks.length) h += '<div class="card"><h3>현장 확인사항</h3><ul class="chk">' + c.checks.map(function (x, i) {
-      return '<li><label><input type="checkbox" id="ck-' + i + '"><span>' + esc(x) + "</span></label></li>";
+      return '<li><label><input type="checkbox" id="ck-' + i + '"><span>' + x + "</span></label></li>";
     }).join("") + "</ul></div>";
     if (c.action) h += '<div class="card"><h3>처리방향</h3><div class="prose">' + c.action + "</div></div>";
     if (c.note) h += '<div class="card"><h3>참고</h3><div class="prose">' + c.note + "</div></div>";
@@ -133,18 +133,25 @@
         return '<a class="case" href="#/law/' + encodeURIComponent(l.id) + '"><span class="tx"><b>' + esc(l.name) + "</b><small>시행 " + esc(l.effective) + " · 조문 " + l.articles.length + "개</small></span></a>";
       }).join("") + "</div>";
   }
-  function viewLaw(id) {
+  function viewLaw(id, art) {
     var l = D.laws.filter(function (x) { return x.id === id; })[0];
     if (!l) return notFound();
     bar(l.name, true);
     tabs("law");
     var h = (l.intro ? '<div class="note-muted prose">' + l.intro + "</div>" : "") + '<div class="card">';
     h += l.articles.map(function (a) {
-      return '<section class="art"><h2>' + esc(a.title) + '</h2><div class="prose">' + a.html + "</div>" +
+      return '<section class="art"' + (a.key ? ' id="a-' + esc(a.key) + '"' : "") + '><h2>' + esc(a.title) + '</h2><div class="prose">' + a.html + "</div>" +
         (a.url ? '<a class="src" href="' + a.url + '" target="_blank" rel="noopener">국가법령정보센터에서 보기</a>' : "") + "</section>";
     }).join("") + "</div>";
     h += '<p class="note-muted">시행일 ' + esc(l.effective) + ' 기준 · <a href="https://github.com/' + D.repo + "/edit/main/" + encodeURI(l.path) + '" target="_blank" rel="noopener">GitHub에서 수정</a></p>';
     $view.innerHTML = h;
+    var t = art && document.getElementById("a-" + art);
+    if (t) {
+      setTimeout(function () {
+        window.scrollTo(0, t.getBoundingClientRect().top + window.scrollY - $bar.offsetHeight - 8);
+        t.classList.add("flash");
+      }, 0);
+    }
   }
   function viewFav() {
     bar("즐겨찾기", false);
@@ -159,19 +166,92 @@
     $view.innerHTML = '<p class="empty">이 사례는 이름이 바뀌었거나 삭제되었습니다. 홈에서 다시 찾아 주세요.</p>';
   }
 
+  // ---- 조문 참조 팝업 ----
+  // 본문의 "제10조제2항" 같은 링크를 누르면 아래에서 그 조문이 올라오고, 가리킨 항·호를 노랗게 표시한다.
+  var sheetStack = [];
+  function findArticle(lid, key) {
+    var l = D.laws.filter(function (x) { return x.id === lid; })[0];
+    if (!l) return null;
+    return { law: l, art: l.articles.filter(function (a) { return a.key === key; })[0] };
+  }
+  function refLabel(r) {
+    var n = r.art.split("-"), s = "제" + n[0] + "조" + (n[1] ? "의" + n[1] : "");
+    if (r.p) s += " 제" + r.p + "항";
+    if (r.i) { var m = r.i.split("-"); s += " 제" + m[0] + "호" + (m[1] ? "의" + m[1] : ""); }
+    return s;
+  }
+  function openRef(r, push) {
+    if (!push) sheetStack = [];
+    sheetStack.push(r);
+    renderSheet();
+  }
+  function closeSheet() {
+    sheetStack = [];
+    var el = document.getElementById("sheet");
+    if (el) el.parentNode.removeChild(el);
+    document.body.classList.remove("noscroll");
+  }
+  function renderSheet() {
+    var r = sheetStack[sheetStack.length - 1];
+    var f = findArticle(r.law, r.art);
+    var el = document.getElementById("sheet");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "sheet";
+      el.className = "sheet";
+      el.setAttribute("role", "dialog");
+      el.setAttribute("aria-modal", "true");
+      document.body.appendChild(el);
+      document.body.classList.add("noscroll");
+    }
+    var head = '<div class="sheet-head">' +
+      (sheetStack.length > 1 ? '<button class="iconbtn" data-act="sheet-back" aria-label="이전 조문">' + svg("back") + "</button>" : "") +
+      '<div class="t"><small>' + esc(f ? f.law.name : "") + "</small><b>" + esc(f && f.art ? f.art.title : refLabel(r)) + "</b></div>" +
+      '<button class="iconbtn" data-act="sheet-close" aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>';
+    var body, foot;
+    if (f && f.art) {
+      body = (r.p || r.i ? '<p class="sheet-ref">' + esc(refLabel(r)) + " 부분을 표시했습니다</p>" : "") + '<div class="prose">' + f.art.html + "</div>";
+      foot = '<a href="#/law/' + encodeURIComponent(r.law) + "/" + encodeURIComponent(r.art) + '">법령 탭에서 보기</a>' +
+        '<a href="' + f.art.url + '" target="_blank" rel="noopener">국가법령정보센터 원문</a>';
+    } else {
+      var name = f ? f.law.name : "";
+      var url = "https://www.law.go.kr/법령/" + encodeURIComponent(name) + "/" + encodeURIComponent(refLabel({ art: r.art }));
+      body = '<p class="empty">이 앱에 넣지 않은 조문입니다.<br>국가법령정보센터에서 원문을 확인하세요.</p>';
+      foot = '<a href="' + url + '" target="_blank" rel="noopener">국가법령정보센터에서 ' + esc(refLabel(r)) + " 보기</a>";
+    }
+    el.innerHTML = '<div class="sheet-bg" data-act="sheet-close"></div><div class="sheet-panel">' + head +
+      '<div class="sheet-body" id="sheet-body">' + body + '</div><div class="sheet-foot">' + foot + "</div></div>";
+    var sel = r.p && r.i ? '[data-p="' + r.p + '"][data-i="' + r.i + '"]' : r.p ? '[data-p="' + r.p + '"]' : r.i ? '[data-i="' + r.i + '"]' : "";
+    if (sel) {
+      var hits = el.querySelectorAll(".ln" + sel);
+      for (var k = 0; k < hits.length; k++) hits[k].classList.add("hit");
+      if (hits[0]) {
+        var sb = document.getElementById("sheet-body");
+        sb.scrollTop = Math.max(0, hits[0].offsetTop - 48);
+      }
+    }
+  }
+
   // ---- 이동 ----
   function route() {
+    closeSheet();
     var h = decodeURIComponent(location.hash.replace(/^#\/?/, ""));
     var p = h.split("/");
     if (p[0] === "c") viewCat(p.slice(1).join("/"));
     else if (p[0] === "k") viewCase(p.slice(1).join("/"));
-    else if (p[0] === "law" && p[1]) viewLaw(p.slice(1).join("/"));
+    else if (p[0] === "law" && p[1]) viewLaw(p[1], p[2]);
     else if (p[0] === "law") viewLaws();
     else if (p[0] === "fav") viewFav();
     else { if (p[0] === "s") query = p.slice(1).join("/"); viewHome(); }
     if (p[0] !== "s") window.scrollTo(0, 0);
   }
   document.addEventListener("click", function (e) {
+    var ref = e.target.closest("a.ref:not(.ext)");
+    if (ref && D) {
+      e.preventDefault();
+      openRef({ law: ref.dataset.law, art: ref.dataset.art, p: ref.dataset.p || "", i: ref.dataset.i || "" }, !!e.target.closest("#sheet"));
+      return;
+    }
     var b = e.target.closest("[data-act],[data-go]");
     if (!b) return;
     if (b.dataset.go) {
@@ -183,8 +263,11 @@
     if (act === "back") { if (history.length > 1) history.back(); else location.hash = "#/"; }
     else if (act === "clear") { query = ""; if (location.hash === "#/" || !location.hash) route(); else location.hash = "#/"; }
     else if (act === "fav") { toggleFav(b.dataset.id); viewCase(b.dataset.id); }
+    else if (act === "sheet-close") closeSheet();
+    else if (act === "sheet-back") { sheetStack.pop(); renderSheet(); }
   });
   window.addEventListener("hashchange", route);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
 
   fetch("data.json", { cache: "no-cache" }).then(function (r) { return r.json(); }).then(function (d) { D = d; route(); })
     .catch(function () { $view.innerHTML = '<p class="empty">자료를 불러오지 못했습니다. 인터넷 연결을 확인한 뒤 다시 열어 주세요.</p>'; });

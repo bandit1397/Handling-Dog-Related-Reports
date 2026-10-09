@@ -39,35 +39,133 @@ def front_matter(text, where):
     return meta, m.group(2)
 
 
+# ---------- 조문 참조 링크 ----------
+# 본문의 "제10조제2항", "같은 조 제3항제1호", "시행규칙 제11조" 같은 표현을 눌러서 볼 수 있는 링크로 바꾼다.
+LAW_IDS = {}  # 법령 이름 → laws/ 파일 id
+CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"
+NAMES = ["동물보호법 시행규칙", "동물보호법 시행령", "경범죄 처벌법 시행령", "경범죄 처벌법", "경찰관 직무집행법",
+         "동물보호법", "형법", "민법", "시행규칙", "시행령"]
+SHORT = {"시행규칙": "동물보호법 시행규칙", "시행령": "동물보호법 시행령"}
+REF = re.compile(
+    r"(?:「(?P<ext>[^」]{1,30})」\s*|(?P<name>" + "|".join(map(re.escape, NAMES)) + r")\s*|(?<![가-힣])(?P<short>법|영)\s+)?"
+    r"(?P<art>같은\s*조|제(?P<an>\d+)조(?:의(?P<ab>\d+))?)"
+    r"(?:\s*제(?P<p>\d+)항)?(?:\s*제(?P<i>\d+)호(?:의(?P<ib>\d+))?)?(?:\s*(?P<m>[가-하])목)?"
+    r"|(?P<bp>제(?P<p2>\d+)항)(?:\s*제(?P<i2>\d+)호(?:의(?P<ib2>\d+))?)?"
+    r"|(?:같은\s*항\s*)?제(?P<i3>\d+)호(?:의(?P<ib3>\d+))?")
+CONNECT = ("ㆍ", "·", ",", "또는", "및", "부터", "이나", "나", "와", "과")
+
+
+def scan_law_names():
+    base = os.path.join(ROOT, "laws")
+    for fn in sorted(os.listdir(base)):
+        if fn.endswith(".md"):
+            meta, _ = front_matter(read(os.path.join(base, fn)), f"laws/{fn}")
+            LAW_IDS[meta.get("법령", fn)] = os.path.splitext(fn)[0]
+
+
+def art_label(key):
+    n, _, b = key.partition("-")
+    return f"제{n}조" + (f"의{b}" if b else "")
+
+
+def resolve_short(short, self_name):
+    if short == "영":
+        return "동물보호법 시행령"
+    if self_name and self_name.startswith("경범죄"):
+        return "경범죄 처벌법"
+    return "동물보호법"
+
+
+def linkify(s, ctx):
+    """s 는 이미 html 이스케이프된 한 문단. ctx: default(기본 법령), art/p(법령 본문에서 지금 조·항)."""
+    out, last, prev, sticky = [], 0, None, None
+    for m in REF.finditer(s):
+        g = m.groupdict()
+        if g["art"]:
+            if g["ext"]:
+                law = g["ext"].strip()
+            elif g["name"]:
+                law = SHORT.get(g["name"], g["name"])
+            elif g["short"]:
+                law = resolve_short(g["short"], ctx.get("self"))
+            elif g["art"].startswith("같은") and prev:
+                law = prev["law"]
+            else:
+                gap = s[prev["end"]:m.start()].rstrip() if prev else ""
+                near = sticky and prev and len(gap) < 20 and gap.endswith(CONNECT)  # "형법 제266조 과실치상, 제267조"
+                law = sticky if near else (ctx.get("default") or "동물보호법")
+            if g["ext"] or g["name"]:
+                sticky = law  # 같은 문단 안에서 뒤에 나오는 "제267조"처럼 법령 이름이 빠진 참조에도 적용
+            if g["an"]:
+                art = g["an"] + ("-" + g["ab"] if g["ab"] else "")
+            else:  # 같은 조
+                art = prev["art"] if prev else ctx.get("art")
+                if g["name"] is None and g["ext"] is None and not prev:
+                    law = ctx.get("self") or law
+            if not art:
+                continue
+            ref = {"law": law, "art": art, "p": g["p"] or "", "i": (g["i"] or "") + ("-" + g["ib"] if g["ib"] else ""), "m": g["m"] or ""}
+        else:
+            # 조 없이 항·호만 쓴 경우: 바로 앞 참조를 잇거나(ㆍ, 또는 …), 법령 본문이면 지금 조문을 가리킨다
+            before = s[:m.start()].rstrip()
+            chained = prev is not None and before.endswith(CONNECT) and m.start() - prev["end"] < 12
+            if chained:
+                base = prev
+            elif ctx.get("art"):
+                base = {"law": ctx.get("self"), "art": ctx["art"], "p": ctx.get("p") or ""}
+            else:
+                continue
+            if g["bp"]:
+                p, i, ib = g["p2"], g["i2"], g["ib2"]
+            else:
+                p, i, ib = base.get("p", ""), g["i3"], g["ib3"]
+            ref = {"law": base["law"], "art": base["art"], "p": p or "", "i": (i or "") + ("-" + ib if ib else ""), "m": ""}
+        ref["end"] = m.end()
+        prev = ref
+        text = m.group(0)
+        lid = LAW_IDS.get(ref["law"])
+        if lid:
+            a = (f'<a class="ref" href="#/law/{lid}/{ref["art"]}" data-law="{lid}" data-art="{ref["art"]}"'
+                 f' data-p="{ref["p"]}" data-i="{ref["i"]}">{text}</a>')
+        else:
+            a = f'<a class="ref ext" href="{law_url(ref["law"], art_label(ref["art"]))}" target="_blank" rel="noopener">{text}</a>'
+        out.append(s[last:m.start()] + a)
+        last = m.end()
+    out.append(s[last:])
+    return "".join(out)
+
+
 # ---------- 아주 작은 마크다운 변환기 ----------
-def inline(s):
+def inline(s, ctx=None):
     s = html.escape(s, quote=False)
+    if ctx is not None:
+        s = linkify(s, ctx)
     s = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", lambda m: f'<img src="{m.group(2)}" alt="{m.group(1)}" loading="lazy">', s)
     s = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", r'<a href="\2" target="_blank" rel="noopener">\1</a>', s)
     s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
     return s
 
 
-def md(text):
+def md(text, ctx=None):
     out, para, lst, tbl = [], [], None, []
 
     def flush():
         nonlocal para, lst, tbl
         if para:
-            out.append("<p>" + inline(" ".join(para)) + "</p>")
+            out.append("<p>" + inline(" ".join(para), ctx) + "</p>")
             para = []
         if lst:
             tag, items = lst[0], lst[1]
             start = f' start="{lst[2]}"' if len(lst) > 2 and lst[2] != 1 else ""
-            out.append(f"<{tag}{start}>" + "".join(f"<li>{inline(i)}</li>" for i in items) + f"</{tag}>")
+            out.append(f"<{tag}{start}>" + "".join(f"<li>{inline(i, ctx)}</li>" for i in items) + f"</{tag}>")
             lst = None
         if tbl:
             rows = [[c.strip() for c in r.strip().strip("|").split("|")] for r in tbl]
             rows = [r for r in rows if not all(re.fullmatch(r":?-{3,}:?", c) for c in r)]
             if rows:
                 head, body = rows[0], rows[1:]
-                h = "" if all(not c for c in head) else "<thead><tr>" + "".join(f"<th>{inline(c)}</th>" for c in head) + "</tr></thead>"
-                b = "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in r) + "</tr>" for r in body)
+                h = "" if all(not c for c in head) else "<thead><tr>" + "".join(f"<th>{inline(c, ctx)}</th>" for c in head) + "</tr></thead>"
+                b = "".join("<tr>" + "".join(f"<td>{inline(c, ctx)}</td>" for c in r) + "</tr>" for r in body)
                 out.append(f'<div class="tbl"><table>{h}<tbody>{b}</tbody></table></div>')
             tbl = []
 
@@ -87,7 +185,7 @@ def md(text):
         if m:
             flush()
             lv = min(len(m.group(1)) + 1, 5)
-            out.append(f"<h{lv}>{inline(m.group(2))}</h{lv}>")
+            out.append(f"<h{lv}>{inline(m.group(2), ctx)}</h{lv}>")
             continue
         m = re.match(r"[-*]\s+(.*)", s)
         if m:
@@ -152,7 +250,7 @@ def load_cases():
             "id": folder,
             "name": meta.get("이름") or re.sub(r"^\d+-", "", folder).replace("-", " "),
             "summary": meta.get("요약", ""),
-            "intro": md(intro),
+            "intro": md(intro, {"default": "동물보호법"}),
             "cases": [],
         }
         for fn in sorted(os.listdir(d)):
@@ -167,7 +265,9 @@ def load_cases():
             laws = []
             for l in bullets(sec.get("적용법조", "")):
                 p = [x.strip() for x in l.split("|")]
-                laws.append({"law": p[0], "penalty": p[1] if len(p) > 1 else "", "note": p[2] if len(p) > 2 else ""})
+                p += ["", ""]
+                laws.append({"law": inline(p[0], {"default": "동물보호법"}), "penalty": inline(p[1], {"default": "동물보호법"}), "note": inline(p[2], {"default": "동물보호법"}),
+                             "text": " ".join(p[:3])})
             photos = []
             for l in bullets(sec.get("사진", "")):
                 p = [x.strip() for x in l.split("|")]
@@ -186,9 +286,9 @@ def load_cases():
                 "verified": meta.get("원문대조", "") == "완료",
                 "keywords": meta.get("검색어", ""),
                 "laws": laws,
-                "checks": bullets(sec.get("현장 확인", "")),
-                "action": md(sec.get("처리방향", "")),
-                "note": md(sec.get("참고", "")),
+                "checks": [inline(x, {"default": "동물보호법"}) for x in bullets(sec.get("현장 확인", ""))],
+                "action": md(sec.get("처리방향", ""), {"default": "동물보호법"}),
+                "note": md(sec.get("참고", ""), {"default": "동물보호법"}),
                 "photos": photos,
             }
             cases[cid] = c
@@ -201,6 +301,30 @@ def load_cases():
 def law_url(name, art):
     from urllib.parse import quote
     return f"https://www.law.go.kr/법령/{quote(name)}/{quote(art)}"
+
+
+def article_html(lines, name, key):
+    """조문 한 줄(항·호·목)마다 번호를 달아 두어, 참조한 항·호를 찾아 강조할 수 있게 한다."""
+    out, p, i = [], "", ""
+    for raw in lines:
+        t = raw.strip()
+        if not t:
+            continue
+        attrs, cls = "", "l0"
+        if t[0] in CIRCLED:
+            p, i, cls = str(CIRCLED.index(t[0]) + 1), "", "lp"
+            attrs = f' data-p="{p}"'
+        else:
+            m = re.match(r"(\d+)(?:의(\d+))?\.\s", t)
+            if m:
+                i, cls = m.group(1) + ("-" + m.group(2) if m.group(2) else ""), "li"
+                attrs = f' data-p="{p}" data-i="{i}"'
+            elif re.match(r"[가-하]\.\s", t):
+                cls = "lm"
+                attrs = f' data-p="{p}" data-i="{i}"'
+        ctx = {"default": name, "self": name, "art": key, "p": p}
+        out.append(f'<p class="ln {cls}"{attrs}>{inline(t, ctx)}</p>')
+    return "\n".join(out)
 
 
 def load_laws():
@@ -223,18 +347,23 @@ def load_laws():
                 intro.append(line)
         out = []
         for a in arts:
-            no = re.match(r"(제\d+조(?:의\d+)?)", a["title"])
-            url = law_url(name, no.group(1)) if no else f"https://www.law.go.kr/법령/{name}"
-            out.append({"title": a["title"], "html": md("\n".join(a["lines"])), "url": url if no else ""})
+            no = re.match(r"제(\d+)조(?:의(\d+))?", a["title"])
+            if not no:  # 금액표처럼 조문이 아닌 부분
+                out.append({"key": "", "title": a["title"], "html": md("\n".join(a["lines"]), {"default": name, "self": name}), "url": ""})
+                continue
+            key = no.group(1) + ("-" + no.group(2) if no.group(2) else "")
+            out.append({"key": key, "title": a["title"], "html": article_html(a["lines"], name, key),
+                        "url": law_url(name, art_label(key))})
         laws.append({"id": os.path.splitext(fn)[0], "name": name, "effective": meta.get("시행일", ""),
-                     "intro": md("\n".join(intro)), "articles": out, "path": f"laws/{fn}"})
+                     "intro": md("\n".join(intro), {"default": name, "self": name}), "articles": out, "path": f"laws/{fn}"})
     return laws
 
 
 def main():
+    scan_law_names()
     cats, cases = load_cases()
     laws = load_laws()
-    home = md(front_matter(read(os.path.join(ROOT, "home.md")), "home.md")[1]) if os.path.exists(os.path.join(ROOT, "home.md")) else ""
+    home = md(front_matter(read(os.path.join(ROOT, "home.md")), "home.md")[1], {"default": "동물보호법"}) if os.path.exists(os.path.join(ROOT, "home.md")) else ""
     if errors:
         print("빌드 실패. 아래 내용을 고친 뒤 다시 저장하세요.\n")
         for e in errors:
