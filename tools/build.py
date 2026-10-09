@@ -157,7 +157,9 @@ def md(text, ctx=None):
         if lst:
             tag, items = lst[0], lst[1]
             start = f' start="{lst[2]}"' if len(lst) > 2 and lst[2] != 1 else ""
-            out.append(f"<{tag}{start}>" + "".join(f"<li>{inline(i, ctx)}</li>" for i in items) + f"</{tag}>")
+            n0 = lst[2] if len(lst) > 2 else None  # 번호 목록은 번호를 data-n 으로 넘겨 동그라미 번호로 그린다
+            out.append(f"<{tag}{start}>" + "".join(
+                f'<li{f" data-n=\"{n0 + k}\"" if n0 else ""}>{inline(i, ctx)}</li>' for k, i in enumerate(items)) + f"</{tag}>")
             lst = None
         if tbl:
             rows = [[c.strip() for c in r.strip().strip("|").split("|")] for r in tbl]
