@@ -112,7 +112,7 @@
     }).join("") + "</div>";
     if (D.home) h += card("k-key", "bolt", "현장 핵심", '<div class="prose">' + D.home + "</div>");
     h += '<p class="foot">현장 참고용 자료입니다. 최종 판단은 법령 원문과 판례 등을 따르세요<br>최종 수정 ' + esc(D.updated) +
-      ' · <a href="https://github.com/' + D.repo + '" target="_blank" rel="noopener">내용 수정(GitHub)</a></p>';
+      ' · 내용 수정(GitHub)</p>';
     return h;
   }
   function results() {
@@ -182,7 +182,7 @@
         (p.caption ? "<figcaption>" + esc(p.caption) + "</figcaption>" : "") + "</figure>";
     }).join("") + "</div>");
     h += '<div class="status' + (c.verified ? " done" : "") + '">' + (c.verified ? svg("check", "ico") + "법령 원문 대조 완료" : svg("info", "ico") + "일부 해석 확인 중 · 법령 원문과 판례 등을 함께 확인하세요") + "</div>";
-    h += '<p class="editlink"><a href="https://github.com/' + D.repo + "/edit/main/" + encodeURI(c.path) + '" target="_blank" rel="noopener">GitHub에서 이 사례 수정</a></p>';
+    h += '<p class="editlink">GitHub에서 이 사례 수정</p>';
     $view.innerHTML = h;
   }
 
@@ -208,7 +208,7 @@
       return '<section class="art"' + (a.key ? ' id="a-' + esc(a.key) + '"' : "") + '><div class="ah"><h2>' + esc(a.title) + "</h2>" +
         (a.url ? '<a class="src" href="' + a.url + '" target="_blank" rel="noopener">원문</a>' : "") + '</div><div class="prose">' + a.html + "</div></section>";
     }).join("");
-    h += '<p class="note-muted">시행일 ' + esc(l.effective) + ' 기준 · <a href="https://github.com/' + D.repo + "/edit/main/" + encodeURI(l.path) + '" target="_blank" rel="noopener">GitHub에서 수정</a></p>';
+    h += '<p class="note-muted">시행일 ' + esc(l.effective) + ' 기준 · GitHub에서 수정</p>';
     $view.innerHTML = h;
     var t = art && document.getElementById("a-" + art);
     if (t) {
