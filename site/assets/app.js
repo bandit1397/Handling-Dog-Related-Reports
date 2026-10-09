@@ -111,7 +111,7 @@
         "</b><span>" + esc(c.summary) + "</span></a>";
     }).join("") + "</div>";
     if (D.home) h += card("k-key", "bolt", "현장 핵심", '<div class="prose">' + D.home + "</div>");
-    h += '<p class="foot">현장 참고용 자료입니다. 최종 판단은 법령 원문과 관서 방침을 따르세요.<br>최종 수정 ' + esc(D.updated) +
+    h += '<p class="foot">현장 참고용 자료입니다. 최종 판단은 법령 원문과 판례 등을 따르세요<br>최종 수정 ' + esc(D.updated) +
       ' · <a href="https://github.com/' + D.repo + '" target="_blank" rel="noopener">내용 수정(GitHub)</a></p>';
     return h;
   }
@@ -181,7 +181,7 @@
       return '<figure class="photo"><a href="' + esc(p.src) + '" target="_blank" rel="noopener"><img src="' + esc(p.src) + '" alt="' + esc(p.caption) + '" loading="lazy"></a>' +
         (p.caption ? "<figcaption>" + esc(p.caption) + "</figcaption>" : "") + "</figure>";
     }).join("") + "</div>");
-    h += '<div class="status' + (c.verified ? " done" : "") + '">' + (c.verified ? svg("check", "ico") + "법령 원문 대조 완료" : svg("info", "ico") + "일부 해석 확인 중 · 관서 방침을 함께 확인하세요") + "</div>";
+    h += '<div class="status' + (c.verified ? " done" : "") + '">' + (c.verified ? svg("check", "ico") + "법령 원문 대조 완료" : svg("info", "ico") + "일부 해석 확인 중 · 법령 원문과 판례 등을 함께 확인하세요") + "</div>";
     h += '<p class="editlink"><a href="https://github.com/' + D.repo + "/edit/main/" + encodeURI(c.path) + '" target="_blank" rel="noopener">GitHub에서 이 사례 수정</a></p>';
     $view.innerHTML = h;
   }
