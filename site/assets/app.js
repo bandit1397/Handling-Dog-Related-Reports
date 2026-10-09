@@ -66,8 +66,9 @@
   }
 
   // ---- 공통 조각 ----
-  function bar(title, back, extra) {
-    $bar.innerHTML = (back ? '<button class="iconbtn" data-act="back" aria-label="뒤로">' + svg("back") + "</button>" : "") +
+  function bar(title, back, extra, center) {
+    $bar.className = "appbar" + (center ? " center" : "");
+    $bar.innerHTML =(back ? '<button class="iconbtn" data-act="back" aria-label="뒤로">' + svg("back") + "</button>" : "") +
       '<div class="t">' + esc(title) + "</div>" + (extra || "");
   }
   function tabs(active) {
@@ -89,7 +90,7 @@
 
   // ---- 홈 ----
   function viewHome() {
-    bar("개 신고 현장 가이드", false, '<span class="d">' + esc(D.updated) + "</span>");
+    bar("개 신고 현장 가이드", false, '<span class="d">' + esc(D.updated) + "</span>", true);
     tabs("home");
     var h = '<label class="search">' + svg("search") +
       '<input id="q" type="search" enterkeyhint="search" placeholder="예: 엘리베이터 소변, 줄 놓침, 입마개" autocomplete="off" value="' + esc(query) + '" aria-label="사례 검색">' +

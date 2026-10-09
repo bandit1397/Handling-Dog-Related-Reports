@@ -52,6 +52,8 @@ button{font:inherit;color:inherit}
   padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;min-height:56px;box-shadow:0 1px 0 rgba(0,0,0,.08)}
 .appbar .t{flex:1;min-width:0;font-weight:700;font-size:1.06rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .appbar .d{font-size:.72rem;opacity:.85;white-space:nowrap}
+.appbar.center{flex-direction:column;justify-content:center;gap:1px;text-align:center}
+.appbar.center .t{flex:none;width:100%}
 .iconbtn{background:none;border:0;color:inherit;width:40px;height:40px;display:grid;place-items:center;border-radius:10px;cursor:pointer;flex-shrink:0}
 .iconbtn:hover{background:rgba(255,255,255,.12)}
 .iconbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
