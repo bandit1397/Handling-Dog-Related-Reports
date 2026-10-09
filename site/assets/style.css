@@ -1,0 +1,124 @@
+/* 한 손 휴대폰 조작 기준. 넓은 화면에서는 가운데 720px 열 */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --ink:#152033; --muted:#5b6678; --line:#d9dee7;
+  --accent:#1d4fa3; --accent-soft:#e3ebf8; --on-accent:#ffffff;
+  --bad:#c0392b; --bad-soft:#fbe9e7; --warn:#9a6200; --warn-soft:#fdf1d8;
+  --ok:#2f6b40; --ok-soft:#e5f1e7; --na:#5b6678; --na-soft:#eceff3; --info:#365f8c; --info-soft:#e4edf6;
+  --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e131c; --surface:#171e2a; --ink:#e6ebf3; --muted:#9aa5b8; --line:#2a3445;
+  --accent:#7aa5ee; --accent-soft:#1d2a42; --on-accent:#0e131c;
+  --bad:#f08a7e; --bad-soft:#3a1f1d; --warn:#f0c060; --warn-soft:#3a2f17;
+  --ok:#8cc79a; --ok-soft:#1c3122; --na:#a2acbc; --na-soft:#242c39; --info:#9cc0ea; --info-soft:#1d2a3a;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e131c; --surface:#171e2a; --ink:#e6ebf3; --muted:#9aa5b8; --line:#2a3445;
+  --accent:#7aa5ee; --accent-soft:#1d2a42; --on-accent:#0e131c;
+  --bad:#f08a7e; --bad-soft:#3a1f1d; --warn:#f0c060; --warn-soft:#3a2f17;
+  --ok:#8cc79a; --ok-soft:#1c3122; --na:#a2acbc; --na-soft:#242c39; --info:#9cc0ea; --info-soft:#1d2a3a;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.6;-webkit-text-size-adjust:100%}
+a{color:var(--accent)}
+img{max-width:100%}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{display:flex;flex-direction:column;min-height:100%;max-width:720px;margin:0 auto;background:var(--bg)}
+.appbar{position:sticky;top:0;z-index:5;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;gap:6px;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;min-height:56px}
+.appbar .t{flex:1;min-width:0;font-weight:700;font-size:1.05rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.appbar .d{font-size:.72rem;opacity:.85;white-space:nowrap}
+.iconbtn{background:none;border:0;color:inherit;width:40px;height:40px;display:grid;place-items:center;border-radius:10px;cursor:pointer;flex-shrink:0}
+.iconbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.iconbtn.on svg{fill:currentColor}
+
+.body{flex:1;padding:14px 16px calc(84px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+.tabs{position:fixed;bottom:0;left:0;right:0;z-index:5;display:flex;justify-content:center;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs .in{display:flex;width:100%;max-width:720px}
+.tabs button{flex:1;background:none;border:0;padding:8px 0 10px;font-size:.74rem;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button.on{color:var(--accent);font-weight:700}
+
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:0 12px;min-height:50px}
+.search:focus-within{border-color:var(--accent)}
+.search svg{width:20px;height:20px;stroke:var(--muted);fill:none;stroke-width:2;flex-shrink:0}
+.search input{flex:1;min-width:0;border:0;background:none;color:var(--ink);font:inherit;font-size:1rem;outline:none;padding:12px 0}
+.search .clear{background:none;border:0;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:4px}
+
+.cats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:3px;min-height:96px}
+.cat:hover{border-color:var(--accent)}
+.cat b{font-size:1.02rem;line-height:1.35}
+.cat span{font-size:.78rem;color:var(--muted);line-height:1.4}
+.cat i{font-style:normal;font-family:var(--mono);font-size:.74rem;color:var(--accent);margin-top:auto}
+
+.sect{font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.04em;margin:6px 2px 0}
+.list{display:flex;flex-direction:column;gap:8px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;text-align:left;width:100%;text-decoration:none;color:var(--ink)}
+.case:hover{border-color:var(--accent)}
+.case .tx{flex:1;min-width:0}
+.case b{display:block;font-weight:600;font-size:.96rem;line-height:1.45}
+.case small{color:var(--muted);font-size:.76rem}
+
+.v{display:inline-block;flex-shrink:0;font-size:.74rem;font-weight:700;padding:3px 9px;border-radius:7px;white-space:nowrap;line-height:1.4}
+.v-형사{background:var(--bad);color:var(--surface)}
+.v-위반{background:var(--bad-soft);color:var(--bad)}
+.v-검토{background:var(--warn-soft);color:var(--warn)}
+.v-적용곤란{background:var(--na-soft);color:var(--na)}
+.v-적법{background:var(--ok-soft);color:var(--ok)}
+.v-참고{background:var(--info-soft);color:var(--info)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.card h3{margin:0 0 8px;font-size:.8rem;color:var(--muted);letter-spacing:.04em;font-weight:700}
+.prose{font-size:.95rem;min-width:0}
+.prose>*:first-child{margin-top:0}
+.prose>*:last-child{margin-bottom:0}
+.prose p,.prose ul,.prose ol{margin:0 0 10px}
+.prose ul,.prose ol{padding-left:1.25em}
+.prose li{margin-bottom:3px}
+.prose h3,.prose h4{font-size:1rem;margin:16px 0 6px}
+.prose img{display:block;border-radius:10px;border:1px solid var(--line);margin:6px 0;background:#fff}
+.tbl{overflow-x:auto;margin:0 0 10px}
+.tbl table{border-collapse:collapse;width:100%;font-size:.86rem}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+.tbl th{color:var(--muted);font-size:.76rem;background:var(--bg)}
+.tbl td:first-child,.tbl th:first-child{min-width:4.5em}
+.tbl td img{margin:0 0 4px;width:100%;aspect-ratio:4/3;object-fit:cover}
+
+.casehead{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.casehead h1{margin:0;font-size:1.25rem;line-height:1.4;text-wrap:balance}
+.law{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-top:1px solid var(--line)}
+.law:first-of-type{border-top:0;padding-top:0}
+.law:last-child{padding-bottom:0}
+.law .n{font-size:.86rem;color:var(--accent);font-weight:600}
+.law .p{font-size:1rem;font-weight:700}
+.law .h{font-size:.8rem;color:var(--muted)}
+.chk{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.chk label{display:flex;gap:10px;align-items:flex-start;cursor:pointer;padding:6px 0;font-size:.95rem}
+.chk input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--accent);flex-shrink:0}
+.chk input:checked+span{color:var(--muted);text-decoration:line-through}
+figure{margin:0}
+.photo img{width:100%;border-radius:10px;border:1px solid var(--line);background:#fff;display:block}
+.photo figcaption{font-size:.8rem;color:var(--muted);margin-top:6px}
+.photos{display:flex;flex-direction:column;gap:14px}
+.status{font-size:.8rem;padding:8px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn)}
+.status.done{background:var(--ok-soft);color:var(--ok)}
+.editlink{font-size:.84rem;text-align:right}
+.note-muted{font-size:.82rem;color:var(--muted)}
+
+.lawlist .case b{font-size:1rem}
+.art{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+.art:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.art h2{font-size:1rem;margin:0 0 6px}
+.art .src{font-size:.8rem}
+.empty{color:var(--muted);text-align:center;padding:28px 8px;font-size:.92rem}
+.foot{font-size:.78rem;color:var(--muted);text-align:center;padding:8px 0 4px;line-height:1.6}
+mark{background:var(--warn-soft);color:inherit;border-radius:3px;padding:0 1px}
+@media (min-width:560px){.cats{grid-template-columns:repeat(3,1fr)}}
+@media (prefers-reduced-motion:no-preference){.body{animation:fade .15s ease-out}@keyframes fade{from{opacity:.5}to{opacity:1}}}
